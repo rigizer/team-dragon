@@ -11,6 +11,7 @@ services:
       - "8000:8000"
     environment:
       - DEBUG=True
+      - API_HOST=http://dragon-be:8000
       - TZ=Asia/Seoul
     networks:
       - dragon
@@ -36,8 +37,11 @@ services:
     depends_on:
       - dragon-be
     environment:
-      - REACT_APP_API_URL=http://dragon-be:8000
+      - VITE_API_URL=http://dragon-be:8000
       - TZ=Asia/Seoul
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
 
 networks:
   dragon:

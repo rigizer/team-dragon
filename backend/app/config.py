@@ -14,6 +14,7 @@ class Config:
     APP_NAME = "Team Dragon Backend"
     APP_VERSION = "1.0.0"
     API_PREFIX = "/api"
+    API_HOST = os.getenv("API_HOST", "http://localhost:8000")
 
 
 config = Config()
