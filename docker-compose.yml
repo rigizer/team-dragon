@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # Backend 서비스
+  dragon-be:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dragon-be
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - TZ=Asia/Seoul
+    networks:
+      - dragon
+    volumes:
+      - ./backend:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Frontend 서비스
+  dragon-fe:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dragon-fe
+    ports:
+      - "3000:3000"
+    networks:
+      - dragon
+    depends_on:
+      - dragon-be
+    environment:
+      - REACT_APP_API_URL=http://dragon-be:8000
+      - TZ=Asia/Seoul
+
+networks:
+  dragon:
+    driver: bridge
