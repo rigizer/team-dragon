@@ -51,16 +51,93 @@ team-dragon/
 ### 요구사항
 - Node.js 24.11.1 이상
 - Python 3.14.2 이상
-- Docker & Docker Compose
+- Docker & Docker Compose (Docker 실행 시)
 
-### 설치 및 실행
+### 1️⃣ 로컬 개발 환경 실행
+
+#### Backend (FastAPI) 실행
 ```bash
-# 저장소 클론
-git clone <repository-url>
-cd team-dragon
+# Backend 디렉토리로 이동
+cd backend
 
-# Docker Compose로 전체 애플리케이션 실행
+# 가상 환경 활성화 (Windows)
+.\.venv\Scripts\Activate.ps1
+
+# 의존성 설치 (최초 1회)
+pip install -r requirements.txt
+
+# 서버 실행
+python main.py
+```
+✅ **Backend**: http://localhost:8000
+
+#### Frontend (React/TypeScript) 실행
+```bash
+# Frontend 디렉토리로 이동 (새 터미널)
+cd frontend
+
+# 의존성 설치 (최초 1회)
+npm install
+
+# 개발 서버 실행
+npm run dev
+```
+✅ **Frontend**: http://localhost:3000  
+✅ **API 연결**: http://localhost:8000 (자동 참조)
+
+### 2️⃣ Docker Compose 실행
+
+#### 전체 스택 실행
+```bash
+# 프로젝트 루트 디렉토리에서
 docker-compose up -d
+```
+
+#### 개별 서비스 실행
+```bash
+# Backend만 실행
+docker-compose up dragon-be -d
+
+# Frontend만 실행
+docker-compose up dragon-fe -d
+```
+
+#### 서비스 확인
+```bash
+# 실행 중인 컨테이너 확인
+docker-compose ps
+
+# 로그 확인
+docker-compose logs -f
+
+# 서비스 중지
+docker-compose down
+```
+
+✅ **Backend**: http://localhost:8000  
+✅ **Frontend**: http://localhost:3000  
+✅ **API 연결**: http://dragon-be:8000 (컨테이너 내부 네트워크)
+
+### 🔧 환경 설정
+
+#### 로컬 개발
+- Backend: `.env` 파일에서 `API_HOST=http://localhost:8000`
+- Frontend: `.env` 파일에서 `VITE_API_URL=http://localhost:8000`
+
+#### Docker 환경
+- 자동으로 컨테이너 네트워크를 통해 서비스 간 통신
+- 환경변수가 `docker-compose.yml`에서 자동 설정됨
+
+### 📊 헬스 체크
+```bash
+# Backend 헬스 체크
+curl http://localhost:8000/health
+
+# 응답 예시
+{
+  "message": "Service is healthy",
+  "status": "ok"
+}
 ```
 
 ## 📝 라이선스
