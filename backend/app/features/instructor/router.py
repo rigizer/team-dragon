@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.features.instructor.schemas import StudentInquiryRequest, StudentListResponse
+from app.features.instructor.schemas import StudentInquiryRequest, StudentListResponse, TrackListResponse
 from app.features.instructor.service import InstructorService
 
 router = APIRouter(prefix="/api", tags=["instructor"])
@@ -14,9 +14,14 @@ async def get_instructor_students(request: StudentInquiryRequest):
     """
     return InstructorService.get_students(request)
 
-@router.get("/tracks")
-async def get_tracks():
-    return InstructorService.get_tracks()
+@router.get("/instructor/{instructor_id}/tracks", response_model=TrackListResponse)
+async def get_tracks(instructor_id: str):
+    """
+    강사별 트랙 목록 조회 API
+    
+    - 경로 변수 instructor_id를 기준으로 해당 강사가 등록한 트랙 목록을 반환합니다.
+    """
+    return InstructorService.get_tracks(instructor_id)
 
 @router.post("/tracks")
 async def create_track():

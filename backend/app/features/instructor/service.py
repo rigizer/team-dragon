@@ -1,6 +1,9 @@
 from app.db.database import SessionLocal
-from app.db.models import User, InstructorStudentRelation
-from app.features.instructor.schemas import StudentInquiryRequest, StudentListResponse, StudentItem
+from app.db.models import User, InstructorStudentRelation, CourseTrack
+from app.features.instructor.schemas import (
+    StudentInquiryRequest, StudentListResponse, StudentItem,
+    TrackListResponse, TrackItem
+)
 
 class InstructorService:
     """강사 관련 비즈니스 로직 및 DB 세션 관리"""
@@ -33,9 +36,26 @@ class InstructorService:
             return StudentListResponse(students=student_list)
 
     @staticmethod
-    def get_tracks():
+    def get_tracks(instructor_login_id: str) -> TrackListResponse:
         with SessionLocal() as db:
-            return {"message": "track list from service"}
+            # 1. 강사 조회
+            instructor = db.query(User).filter(User.login_id == instructor_login_id, User.role == "INSTRUCTOR").first()
+            if not instructor:
+                return TrackListResponse(tracks=[TrackItem(track_name=None, track_id=None) for _ in range(2)])
+            
+            # 2. 해당 강사의 트랙 조회
+            tracks = db.query(CourseTrack).filter(CourseTrack.instructor_id == instructor.id).all()
+            
+            if not tracks:
+                return TrackListResponse(tracks=[TrackItem(track_name=None, track_id=None) for _ in range(2)])
+            
+            # 3. 데이터 가공
+            track_list = [
+                TrackItem(track_name=track.name, track_id=track.id)
+                for track in tracks
+            ]
+            
+            return TrackListResponse(tracks=track_list)
 
     @staticmethod
     def create_track():

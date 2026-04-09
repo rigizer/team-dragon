@@ -10,3 +10,10 @@ class StudentItem(BaseModel):
 
 class StudentListResponse(BaseModel):
     students: List[StudentItem]
+
+class TrackItem(BaseModel):
+    track_name: Optional[str] = None
+    track_id: Optional[int] = None
+
+class TrackListResponse(BaseModel):
+    tracks: List[TrackItem]
