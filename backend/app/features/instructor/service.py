@@ -13,7 +13,8 @@ from app.db.models import User, InstructorStudentRelation, CourseTrack, CourseMa
 from app.features.instructor.schemas import (
     StudentListResponse, StudentItem,
     TrackListResponse, TrackItem,
-    TrackCreateResponse, CandidateListResponse, CandidateItem
+    TrackCreateResponse, CandidateListResponse, CandidateItem,
+    ApproveCriteriaRequest, ApproveCriteriaResponse
 )
 
 UPLOAD_DIR = "uploads"
@@ -309,9 +310,27 @@ class InstructorService:
             return f.read()
 
     @staticmethod
-    def approve_criteria(track_id: int):
+    def approve_criteria(track_id: int, data: ApproveCriteriaRequest) -> ApproveCriteriaResponse:
         with SessionLocal() as db:
-            return {"message": "criteria approved from service"}
+            # 1. 기존 평가지표 삭제
+            db.query(EvaluationCriterion).filter(EvaluationCriterion.track_id == track_id).delete()
+            
+            # 2. 새로운 평가지표 등록
+            for item in data.criterias:
+                if item.title:  # title이 있는 경우만 저장
+                    new_criterion = EvaluationCriterion(
+                        track_id=track_id,
+                        title=item.title,
+                        description=item.description,
+                        priority=item.priority,
+                        source_refs=item.source_refs,
+                        flags=item.flags,
+                        status="approved" # 확정 상태로 저장
+                    )
+                    db.add(new_criterion)
+            
+            db.commit()
+            return ApproveCriteriaResponse(status="approved")
 
     @staticmethod
     def evaluate_projects(track_id: int):

@@ -28,3 +28,9 @@ class CandidateItem(BaseModel):
 
 class CandidateListResponse(BaseModel):
     candidates: List[CandidateItem]
+
+class ApproveCriteriaRequest(BaseModel):
+    criterias: List[CandidateItem]
+
+class ApproveCriteriaResponse(BaseModel):
+    status: str

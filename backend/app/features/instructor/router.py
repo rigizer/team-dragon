@@ -1,6 +1,7 @@
 from fastapi import APIRouter, File, UploadFile, Form
 from app.features.instructor.schemas import (
-    StudentListResponse, TrackListResponse, TrackCreateResponse, CandidateListResponse
+    StudentListResponse, TrackListResponse, TrackCreateResponse, 
+    CandidateListResponse, ApproveCriteriaRequest, ApproveCriteriaResponse
 )
 from app.features.instructor.service import InstructorService
 
@@ -57,9 +58,15 @@ async def get_criteria_candidates(track_id: int):
     """
     return InstructorService.get_criteria_candidates(track_id)
 
-@router.post("/tracks/{track_id}/criteria/approve")
-async def approve_criteria(track_id: int):
-    return InstructorService.approve_criteria(track_id)
+@router.post("/tracks/{track_id}/criteria/approve", response_model=ApproveCriteriaResponse)
+async def approve_criteria(track_id: int, request: ApproveCriteriaRequest):
+    """
+    평가지표 수정 및 확정 API
+    
+    - 강사가 수정한 평가지표 목록(최대 5개)을 받아 DB에 저장합니다.
+    - 기존에 생성된 임시(draft) 지표들은 삭제하고 전달받은 지표로 교체합니다.
+    """
+    return InstructorService.approve_criteria(track_id, request)
 
 @router.post("/projects/{track_id}/evaluations")
 async def evaluate_projects(track_id: int):
