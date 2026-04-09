@@ -7,6 +7,7 @@ from app.features.health.router import router as health_router
 from app.features.instructor.router import router as instructor_router
 from app.features.student.router import router as student_router
 from app.features.portfolio.router import router as portfolio_router
+from app.features.auth.router import router as auth_router
 
 
 class DragonApp:
@@ -27,6 +28,7 @@ class DragonApp:
         self.app.include_router(instructor_router)
         self.app.include_router(student_router)
         self.app.include_router(portfolio_router)
+        self.app.include_router(auth_router)
     
     def get_app(self) -> FastAPI:
         """FastAPI 앱 인스턴스 반환"""
