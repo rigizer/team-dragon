@@ -25,24 +25,6 @@ services:
       timeout: 5s
       retries: 3
 
-  # Frontend 서비스
-  dragon-fe:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: dragon-fe
-    ports:
-      - "3000:3000"
-    networks:
-      - dragon
-    depends_on:
-      - dragon-be
-    environment:
-      - VITE_API_URL=http://localhost:8000
-      - TZ=Asia/Seoul
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
 
   # Database 서비스
   dragon-db:
