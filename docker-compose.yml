@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Backend 서비스
   dragon-be:
@@ -9,9 +7,12 @@ services:
     container_name: dragon-be
     ports:
       - "8000:8000"
+    depends_on:
+      - dragon-db
     environment:
       - DEBUG=True
       - API_HOST=http://dragon-be:8000
+      - DATABASE_URL=postgresql://dragon:dragon_pass@dragon-db:5432/dragon_db
       - TZ=Asia/Seoul
     networks:
       - dragon
@@ -19,7 +20,7 @@ services:
       - ./backend:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthcheck"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -37,12 +38,32 @@ services:
     depends_on:
       - dragon-be
     environment:
-      - VITE_API_URL=http://dragon-be:8000
+      - VITE_API_URL=http://localhost:8000
       - TZ=Asia/Seoul
     volumes:
       - ./frontend:/app
       - /app/node_modules
 
+  # Database 서비스
+  dragon-db:
+    image: postgres:15-alpine
+    container_name: dragon-db
+    environment:
+      POSTGRES_USER: "dragon"
+      POSTGRES_PASSWORD: "dragon_pass"
+      POSTGRES_DB: "dragon_db"
+      TZ: Asia/Seoul
+    ports:
+      - 5432:5432
+    volumes:
+      - ./postgresql/data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - dragon
+
 networks:
   dragon:
     driver: bridge
+
+volumes:
+  dragon-db-data:
