@@ -48,16 +48,16 @@ services:
   dragon-db:
     image: postgres:15-alpine
     container_name: dragon-db
-    restart: always
     environment:
-      - POSTGRES_USER=dragon
-      - POSTGRES_PASSWORD=dragon_pass
-      - POSTGRES_DB=dragon_db
-      - TZ=Asia/Seoul
+      POSTGRES_USER: "dragon"
+      POSTGRES_PASSWORD: "dragon_pass"
+      POSTGRES_DB: "dragon_db"
+      TZ: Asia/Seoul
     ports:
-      - "5432:5432"
+      - 5432:5432
     volumes:
-      - dragon-db-data:/var/lib/postgresql/data
+      - ./postgresql/data:/var/lib/postgresql/data
+    restart: unless-stopped
     networks:
       - dragon
 
