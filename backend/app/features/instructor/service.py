@@ -1,12 +1,36 @@
 from app.db.database import SessionLocal
+from app.db.models import User, InstructorStudentRelation
+from app.features.instructor.schemas import StudentInquiryRequest, StudentListResponse, StudentItem
 
 class InstructorService:
     """강사 관련 비즈니스 로직 및 DB 세션 관리"""
     
     @staticmethod
-    def get_students():
+    def get_students(request: StudentInquiryRequest) -> StudentListResponse:
         with SessionLocal() as db:
-            return {"message": "instructor students list from service"}
+            # 1. 강사 조회 (login_id 기준)
+            instructor = db.query(User).filter(User.login_id == request.user_id, User.role == "INSTRUCTOR").first()
+            if not instructor:
+                return StudentListResponse(students=[StudentItem(student_name=None, student_id=None) for _ in range(3)])
+            
+            # 2. 강사와 연결된 학생 정보 조회
+            results = (
+                db.query(User.name, User.login_id)
+                .join(InstructorStudentRelation, User.id == InstructorStudentRelation.student_id)
+                .filter(InstructorStudentRelation.instructor_id == instructor.id)
+                .all()
+            )
+            
+            if not results:
+                return StudentListResponse(students=[StudentItem(student_name=None, student_id=None) for _ in range(3)])
+            
+            # 3. 데이터 가공 (이름, 아이디 분리)
+            student_list = [
+                StudentItem(student_name=name, student_id=login_id)
+                for name, login_id in results
+            ]
+            
+            return StudentListResponse(students=student_list)
 
     @staticmethod
     def get_tracks():
