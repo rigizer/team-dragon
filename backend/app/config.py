@@ -15,7 +15,7 @@ class Config:
     APP_VERSION = "1.0.0"
     API_PREFIX = "/api"
     API_HOST = os.getenv("API_HOST", "http://localhost:8000")
-    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://dragon:dragon_pass@localhost:5432/dragon_db")
+    DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 
 config = Config()

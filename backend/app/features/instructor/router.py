@@ -1,5 +1,7 @@
 from fastapi import APIRouter, File, UploadFile, Form
-from app.features.instructor.schemas import StudentListResponse, TrackListResponse, TrackCreateResponse
+from app.features.instructor.schemas import (
+    StudentListResponse, TrackListResponse, TrackCreateResponse, CandidateListResponse
+)
 from app.features.instructor.service import InstructorService
 
 router = APIRouter(prefix="/api", tags=["instructor"])
@@ -45,8 +47,14 @@ async def create_track(
 async def get_track_portfolios(track_id: int):
     return InstructorService.get_track_portfolios(track_id)
 
-@router.get("/tracks/{track_id}/criteria/candidates")
+@router.get("/tracks/{track_id}/criteria/candidates", response_model=CandidateListResponse)
 async def get_criteria_candidates(track_id: int):
+    """
+    평가지표 후보 조회 API
+    
+    - 시스템이 생성한 평가지표 후보 3개를 반환합니다.
+    - 처음 호출 시 GPT를 통해 생성하며, 이후에는 저장된 지표를 반환합니다.
+    """
     return InstructorService.get_criteria_candidates(track_id)
 
 @router.post("/tracks/{track_id}/criteria/approve")

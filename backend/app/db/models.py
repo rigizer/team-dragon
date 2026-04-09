@@ -66,6 +66,7 @@ class EvaluationCriterion(Base, TimestampMixin):
     description = Column(Text)
     source_refs = Column(Text)
     priority = Column(Integer)  # 1~5 우선순위
+    flags = Column(String(50))  # 확신 여부 (확인 필요 등)
     score_scale = Column(Integer, default=5)
     status = Column(String(50), default="draft")  # draft | approved
 

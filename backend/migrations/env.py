@@ -18,8 +18,8 @@ import app.db.models  # 모든 모델을 임포트하여 MetaData에 등록
 # access to the values within the .ini file in use.
 config = context.config
 
-# 애플리케이션 설정에서 DB URL 가져오기
-config.set_main_option("sqlalchemy.url", app_config.DATABASE_URL)
+# 애플리케이션 설정에서 DB URL 가져오기 (특수문자 % 이스케이프 처리)
+config.set_main_option("sqlalchemy.url", app_config.DATABASE_URL.replace("%", "%%"))
 
 # Interpret the config file for Python logging.
 if config.config_file_name is not None:
