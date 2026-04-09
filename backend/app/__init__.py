@@ -1,7 +1,8 @@
 """
 Team Dragon Backend Application
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
+from starlette.status import HTTP_413_REQUEST_ENTITY_TOO_LARGE
 from app.config import config
 from app.features.health.router import router as health_router
 from app.features.instructor.router import router as instructor_router
@@ -19,7 +20,24 @@ class DragonApp:
             version=config.APP_VERSION,
             debug=config.DEBUG
         )
+        self._setup_middlewares()
         self._setup_routes()
+
+    def _setup_middlewares(self):
+        """미들웨어 설정"""
+        
+        # 업로드 용량 제한 미들웨어 (100MB)
+        @self.app.middleware("http")
+        async def limit_upload_size(request: Request, call_next):
+            if request.method == "POST":
+                content_length = request.headers.get("Content-Length")
+                if content_length:
+                    if int(content_length) > 100 * 1024 * 1024:  # 100MB
+                        return Response(
+                            content="File too large (Max 100MB)",
+                            status_code=HTTP_413_REQUEST_ENTITY_TOO_LARGE
+                        )
+            return await call_next(request)
     
     def _setup_routes(self):
         """라우트 설정"""

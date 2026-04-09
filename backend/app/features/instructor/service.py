@@ -1,9 +1,16 @@
+import os
+import shutil
+import uuid
+from fastapi import UploadFile
 from app.db.database import SessionLocal
-from app.db.models import User, InstructorStudentRelation, CourseTrack
+from app.db.models import User, InstructorStudentRelation, CourseTrack, CourseMaterial
 from app.features.instructor.schemas import (
     StudentListResponse, StudentItem,
-    TrackListResponse, TrackItem
+    TrackListResponse, TrackItem,
+    TrackCreateResponse
 )
+
+UPLOAD_DIR = "uploads"
 
 class InstructorService:
     """강사 관련 비즈니스 로직 및 DB 세션 관리"""
@@ -58,9 +65,68 @@ class InstructorService:
             return TrackListResponse(tracks=track_list)
 
     @staticmethod
-    def create_track():
+    def create_track(
+        instructor_login_id: str,
+        name: str,
+        domain_type: str,
+        material_file: UploadFile,
+        rubric_file: UploadFile
+    ) -> TrackCreateResponse:
         with SessionLocal() as db:
-            return {"message": "track created from service"}
+            # 1. 강사 조회
+            instructor = db.query(User).filter(User.login_id == instructor_login_id, User.role == "INSTRUCTOR").first()
+            if not instructor:
+                # 강사가 없는 경우 처리 (명세서에 구체적인 에러 처리는 없지만 간단히 0으로 반환하거나 예외 발생 가능)
+                # 여기서는 명세서의 오류 응답 형식을 따르기 위해 가짜 데이터 반환 혹은 예외
+                raise Exception("Instructor not found")
+
+            # 2. 트랙 생성
+            new_track = CourseTrack(
+                instructor_id=instructor.id,
+                name=name,
+                domain_type=domain_type
+            )
+            db.add(new_track)
+            db.commit()
+            db.refresh(new_track)
+
+            # 3. 파일 저장 설정
+            track_upload_dir = os.path.join(UPLOAD_DIR, str(new_track.id))
+            os.makedirs(track_upload_dir, exist_ok=True)
+
+            # 4. 파일 저장 및 DB 등록 (강의자료)
+            material_ext = os.path.splitext(material_file.filename)[1]
+            material_filename = f"{uuid.uuid4()}{material_ext}"
+            material_path = os.path.join(track_upload_dir, material_filename)
+            
+            with open(material_path, "wb") as buffer:
+                shutil.copyfileobj(material_file.file, buffer)
+            
+            db.add(CourseMaterial(
+                track_id=new_track.id,
+                material_type="강의자료",
+                file_url=material_path,
+                status="uploaded"
+            ))
+
+            # 5. 파일 저장 및 DB 등록 (루브릭)
+            rubric_ext = os.path.splitext(rubric_file.filename)[1]
+            rubric_filename = f"{uuid.uuid4()}{rubric_ext}"
+            rubric_path = os.path.join(track_upload_dir, rubric_filename)
+            
+            with open(rubric_path, "wb") as buffer:
+                shutil.copyfileobj(rubric_file.file, buffer)
+            
+            db.add(CourseMaterial(
+                track_id=new_track.id,
+                material_type="루브릭",
+                file_url=rubric_path,
+                status="uploaded"
+            ))
+
+            db.commit()
+
+            return TrackCreateResponse(track_id=new_track.id, status="extracted")
 
     @staticmethod
     def get_track_portfolios(track_id: int):

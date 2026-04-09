@@ -14,3 +14,7 @@ class TrackItem(BaseModel):
 
 class TrackListResponse(BaseModel):
     tracks: List[TrackItem]
+
+class TrackCreateResponse(BaseModel):
+    track_id: int
+    status: str

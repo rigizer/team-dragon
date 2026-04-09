@@ -1,5 +1,5 @@
-from fastapi import APIRouter
-from app.features.instructor.schemas import StudentListResponse, TrackListResponse
+from fastapi import APIRouter, File, UploadFile, Form
+from app.features.instructor.schemas import StudentListResponse, TrackListResponse, TrackCreateResponse
 from app.features.instructor.service import InstructorService
 
 router = APIRouter(prefix="/api", tags=["instructor"])
@@ -23,9 +23,23 @@ async def get_tracks(instructor_id: str):
     """
     return InstructorService.get_tracks(instructor_id)
 
-@router.post("/tracks")
-async def create_track():
-    return InstructorService.create_track()
+@router.post("/instructor/{instructor_id}/tracks", response_model=TrackCreateResponse)
+async def create_track(
+    instructor_id: str,
+    name: str = Form(...),
+    domain_type: str = Form(...),
+    material_file: UploadFile = File(...),
+    rubric_file: UploadFile = File(...)
+):
+    """
+    트랙 등록 및 자료 업로드 API
+    
+    - Multipart/Form-Data 형식으로 트랙 정보와 PDF 파일을 수신합니다.
+    - 파일은 서버에 저장되고 DB에 트랙과 자료 정보가 등록됩니다.
+    """
+    return InstructorService.create_track(
+        instructor_id, name, domain_type, material_file, rubric_file
+    )
 
 @router.get("/tracks/{track_id}/portfolio")
 async def get_track_portfolios(track_id: int):
