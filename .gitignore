@@ -311,3 +311,10 @@ poetry.toml
 pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python,node
+
+# Custom ignores
+postgresql/data/
+backend/uploads/
+.DS_Store
+*.pyc
+__pycache__/

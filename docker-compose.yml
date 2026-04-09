@@ -11,8 +11,8 @@ services:
       - dragon-db
     environment:
       - DEBUG=True
-      - API_HOST=http://dragon-be:8000
-      - DATABASE_URL=postgresql://dragon:dragon_pass@dragon-db:5432/dragon_db
+      - API_HOST=${API_HOST:-http://dragon-be:8000}
+      - DATABASE_URL=${DATABASE_URL}
       - TZ=Asia/Seoul
     networks:
       - dragon
@@ -49,10 +49,10 @@ services:
     image: postgres:15-alpine
     container_name: dragon-db
     environment:
-      POSTGRES_USER: "dragon"
-      POSTGRES_PASSWORD: "dragon_pass"
-      POSTGRES_DB: "dragon_db"
-      TZ: Asia/Seoul
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      TZ: ${TZ:-Asia/Seoul}
     ports:
       - 5432:5432
     volumes:
