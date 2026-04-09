@@ -1,18 +1,18 @@
 from fastapi import APIRouter
-from app.features.instructor.schemas import StudentInquiryRequest, StudentListResponse, TrackListResponse
+from app.features.instructor.schemas import StudentListResponse, TrackListResponse
 from app.features.instructor.service import InstructorService
 
 router = APIRouter(prefix="/api", tags=["instructor"])
 
-@router.get("/instructor/students", response_model=StudentListResponse)
-async def get_instructor_students(request: StudentInquiryRequest):
+@router.get("/instructor/{instructor_id}/students", response_model=StudentListResponse)
+async def get_instructor_students(instructor_id: str):
     """
     강사별 수강생 정보 조회 API
     
-    - 요청 바디의 user_id(강사 ID)를 기준으로 매핑된 학생 목록을 반환합니다.
+    - 경로 변수 instructor_id(강사 ID)를 기준으로 매핑된 학생 목록을 반환합니다.
     - 각 학생 정보는 '이름+아이디' 형식으로 가공됩니다.
     """
-    return InstructorService.get_students(request)
+    return InstructorService.get_students(instructor_id)
 
 @router.get("/instructor/{instructor_id}/tracks", response_model=TrackListResponse)
 async def get_tracks(instructor_id: str):

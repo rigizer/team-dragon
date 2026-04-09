@@ -1,7 +1,7 @@
 from app.db.database import SessionLocal
 from app.db.models import User, InstructorStudentRelation, CourseTrack
 from app.features.instructor.schemas import (
-    StudentInquiryRequest, StudentListResponse, StudentItem,
+    StudentListResponse, StudentItem,
     TrackListResponse, TrackItem
 )
 
@@ -9,10 +9,10 @@ class InstructorService:
     """강사 관련 비즈니스 로직 및 DB 세션 관리"""
     
     @staticmethod
-    def get_students(request: StudentInquiryRequest) -> StudentListResponse:
+    def get_students(instructor_login_id: str) -> StudentListResponse:
         with SessionLocal() as db:
             # 1. 강사 조회 (login_id 기준)
-            instructor = db.query(User).filter(User.login_id == request.user_id, User.role == "INSTRUCTOR").first()
+            instructor = db.query(User).filter(User.login_id == instructor_login_id, User.role == "INSTRUCTOR").first()
             if not instructor:
                 return StudentListResponse(students=[StudentItem(student_name=None, student_id=None) for _ in range(3)])
             

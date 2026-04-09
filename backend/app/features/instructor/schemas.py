@@ -1,9 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
-class StudentInquiryRequest(BaseModel):
-    user_id: str
-
 class StudentItem(BaseModel):
     student_name: Optional[str] = None
     student_id: Optional[str] = None
