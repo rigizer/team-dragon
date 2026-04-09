@@ -1,5 +1,5 @@
-# Python 3.14 공식 이미지 기반
-FROM python:3.14-slim
+# Python 3.12 공식 이미지 기반
+FROM python:3.12-slim
 
 # 작업 디렉토리 설정
 WORKDIR /app
@@ -7,6 +7,7 @@ WORKDIR /app
 # 시스템 패키지 업데이트 및 필요한 도구 설치
 RUN apt-get update && apt-get install -y \
     gcc \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # requirements.txt 복사

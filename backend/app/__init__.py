@@ -3,7 +3,10 @@ Team Dragon Backend Application
 """
 from fastapi import FastAPI
 from app.config import config
-from app.api.routes import get_health_router
+from app.features.health.router import router as health_router
+from app.features.instructor.router import router as instructor_router
+from app.features.student.router import router as student_router
+from app.features.portfolio.router import router as portfolio_router
 
 
 class DragonApp:
@@ -19,9 +22,11 @@ class DragonApp:
     
     def _setup_routes(self):
         """라우트 설정"""
-        # 헬스 체크 라우터 등록
-        health_router = get_health_router()
+        # 기능별 라우터 등록
         self.app.include_router(health_router)
+        self.app.include_router(instructor_router)
+        self.app.include_router(student_router)
+        self.app.include_router(portfolio_router)
     
     def get_app(self) -> FastAPI:
         """FastAPI 앱 인스턴스 반환"""
