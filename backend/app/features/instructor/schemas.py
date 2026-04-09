@@ -18,3 +18,13 @@ class TrackListResponse(BaseModel):
 class TrackCreateResponse(BaseModel):
     track_id: int
     status: str
+
+class CandidateItem(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    priority: Optional[int] = None
+    source_refs: Optional[str] = None
+    flags: Optional[str] = None
+
+class CandidateListResponse(BaseModel):
+    candidates: List[CandidateItem]

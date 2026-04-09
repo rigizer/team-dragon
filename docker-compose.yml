@@ -9,6 +9,8 @@ services:
       - "8000:8000"
     depends_on:
       - dragon-db
+    env_file:
+      - .env
     environment:
       - DEBUG=True
       - API_HOST=${API_HOST:-http://dragon-be:8000}
