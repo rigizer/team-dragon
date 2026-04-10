@@ -2,7 +2,12 @@ from typing import List
 
 from fastapi import APIRouter, File, Form, UploadFile
 
-from app.features.student.schemas import ContributionCandidateResponse, ProjectUploadResponse
+from app.features.student.schemas import (
+    ContributionCandidateResponse,
+    ContributionUpdateRequest,
+    ContributionUpdateResponse,
+    ProjectUploadResponse,
+)
 from app.features.student.service import StudentService
 
 router = APIRouter(prefix="/api", tags=["student"])
@@ -33,6 +38,6 @@ async def upload_project(
 async def get_contribution_candidates(project_id: int):
     return StudentService.get_contribution_candidates(project_id)
 
-@router.patch("/projects/{project_id}/contributions")
-async def update_contributions(project_id: int):
-    return StudentService.update_contributions(project_id)
+@router.patch("/projects/{project_id}/contributions", response_model=ContributionUpdateResponse)
+async def update_contributions(project_id: int, request: ContributionUpdateRequest):
+    return StudentService.update_contributions(project_id, request)

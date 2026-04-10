@@ -30,3 +30,18 @@ class ContributionSuggestionItem(BaseModel):
 
 class ContributionCandidateResponse(BaseModel):
     suggestions: list[ContributionSuggestionItem]
+
+
+class ContributionSuggestionUpdateItem(BaseModel):
+    role: str
+    actions: list[ContributionActionItem]
+    results: list[ContributionResultItem]
+    skills: list[ContributionSkillItem]
+
+
+class ContributionUpdateRequest(BaseModel):
+    suggestions: list[ContributionSuggestionUpdateItem]
+
+
+class ContributionUpdateResponse(BaseModel):
+    status: Optional[str] = None

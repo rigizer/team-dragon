@@ -8,7 +8,7 @@ from typing import Iterable
 from fastapi import HTTPException, UploadFile
 
 from app.db.database import SessionLocal
-from app.db.models import ContributionFrom, CourseTrack, EvaluationCriterion, StudentProject, User
+from app.db.models import ContributionFrom, ContributionSkill, CourseTrack, EvaluationCriterion, StudentProject, User
 from app.features.instructor.service import InstructorService
 from app.features.student.schemas import (
     ContributionActionItem,
@@ -16,6 +16,8 @@ from app.features.student.schemas import (
     ContributionResultItem,
     ContributionSkillItem,
     ContributionSuggestionItem,
+    ContributionUpdateRequest,
+    ContributionUpdateResponse,
     ProjectUploadResponse,
 )
 
@@ -134,6 +136,8 @@ class StudentService:
                     contribution.student_action,
                     contribution.student_result,
                 )
+                if contribution.skills:
+                    skills = StudentService._get_saved_skills(contribution.skills)
 
                 suggestions.append(
                     ContributionSuggestionItem(
@@ -161,9 +165,45 @@ class StudentService:
             return ContributionCandidateResponse(suggestions=suggestions)
 
     @staticmethod
-    def update_contributions(project_id: int):
+    def update_contributions(
+        project_id: int,
+        request: ContributionUpdateRequest,
+    ) -> ContributionUpdateResponse:
         with SessionLocal() as db:
-            return {"message": f"contributions for project {project_id} updated from service"}
+            try:
+                project = db.query(StudentProject).filter(StudentProject.id == project_id).first()
+                if not project or not request.suggestions:
+                    return ContributionUpdateResponse(status=None)
+
+                db.query(ContributionFrom).filter(
+                    ContributionFrom.student_project_id == project_id
+                ).delete()
+
+                for suggestion in request.suggestions:
+                    contribution = ContributionFrom(
+                        student_project_id=project_id,
+                        student_role=suggestion.role,
+                        student_action=StudentService._join_actions(suggestion.actions),
+                        student_result=StudentService._join_results(suggestion.results),
+                        scope_type="individual",
+                        status="submitted",
+                    )
+                    db.add(contribution)
+                    db.flush()
+
+                    for skill_name in StudentService._normalize_skill_names(suggestion.skills):
+                        db.add(
+                            ContributionSkill(
+                                contribution_id=contribution.id,
+                                skill_name=skill_name,
+                            )
+                        )
+
+                db.commit()
+                return ContributionUpdateResponse(status="submitted")
+            except Exception:
+                db.rollback()
+                return ContributionUpdateResponse(status=None)
 
     @staticmethod
     def _resolve_track_id(db, track_id: str | int | None) -> int | None:
@@ -287,6 +327,40 @@ class StudentService:
             items.append(cleaned)
 
         return items[:5]
+
+    @staticmethod
+    def _join_actions(actions: list[ContributionActionItem]) -> str | None:
+        joined = "\n".join(item.action.strip() for item in actions if item.action.strip())
+        return joined or None
+
+    @staticmethod
+    def _join_results(results: list[ContributionResultItem]) -> str | None:
+        joined = "\n".join(item.result.strip() for item in results if item.result.strip())
+        return joined or None
+
+    @staticmethod
+    def _normalize_skill_names(skills: list[ContributionSkillItem]) -> list[str]:
+        normalized: list[str] = []
+        seen: set[str] = set()
+
+        for item in skills:
+            skill_name = item.skill.strip()
+            if not skill_name:
+                continue
+
+            lowered = skill_name.lower()
+            if lowered in seen:
+                continue
+
+            seen.add(lowered)
+            normalized.append(skill_name)
+
+        return normalized[:5]
+
+    @staticmethod
+    def _get_saved_skills(skills: list[ContributionSkill]) -> list[str]:
+        ordered = sorted(skills, key=lambda skill: (skill.created_at, skill.id))
+        return [skill.skill_name for skill in ordered if skill.skill_name][:5]
 
     @staticmethod
     def _extract_skills(*texts: str | None) -> list[str]:
