@@ -1,4 +1,20 @@
+import json
+import re
+import shutil
+import uuid
+from pathlib import Path
+from typing import Iterable
+
+from fastapi import UploadFile
+
 from app.db.database import SessionLocal
+from app.db.models import ContributionFrom, CourseTrack, StudentProject, User
+from app.features.instructor.service import InstructorService
+from app.features.student.schemas import ProjectUploadResponse
+
+BASE_DIR = Path(__file__).resolve().parents[3]
+PROJECT_UPLOAD_DIR = BASE_DIR / "uploads" / "projects"
+
 
 class StudentService:
     """학생 관련 비즈니스 로직 및 DB 세션 관리"""
@@ -9,9 +25,65 @@ class StudentService:
             return {"message": f"tracks for student {student_id} from service"}
 
     @staticmethod
-    def upload_project():
+    def upload_project(
+        student_login_id: str,
+        track_id: str | int | None,
+        title: str,
+        project_pdfs: list[UploadFile],
+        project_link: str | None,
+        extra_links: str | None,
+    ) -> ProjectUploadResponse:
         with SessionLocal() as db:
-            return {"message": "project uploaded from service"}
+            try:
+                student = (
+                    db.query(User)
+                    .filter(User.login_id == student_login_id, User.role == "STUDENT")
+                    .first()
+                )
+                resolved_track_id = StudentService._resolve_track_id(db, track_id)
+                if not student or not project_pdfs or resolved_track_id is None:
+                    return ProjectUploadResponse(project_id=None, status=None)
+
+                project = StudentProject(
+                    student_id=student.id,
+                    track_id=resolved_track_id,
+                    title=title,
+                    project_pdf_url="[]",
+                    status="uploaded",
+                )
+                db.add(project)
+                db.flush()
+
+                project_dir = PROJECT_UPLOAD_DIR / str(project.id)
+                project_dir.mkdir(parents=True, exist_ok=True)
+
+                saved_paths = StudentService._save_project_files(project_dir, project_pdfs)
+                extracted_text, ocr_text = StudentService._extract_project_text(saved_paths)
+                contribution_payload = StudentService._parse_contribution_text(
+                    ocr_text or extracted_text
+                )
+
+                project.project_pdf_url = json.dumps(saved_paths, ensure_ascii=False)
+                project.extracted_text = extracted_text or None
+                project.ocr_text = ocr_text or None
+                project.status = "extracted" if (extracted_text or ocr_text) else "uploaded"
+
+                db.add(
+                    ContributionFrom(
+                        student_project_id=project.id,
+                        student_role=contribution_payload["student_role"],
+                        student_action=contribution_payload["student_action"],
+                        student_result=contribution_payload["student_result"],
+                        scope_type="individual",
+                        status="submitted" if contribution_payload["student_action"] else "draft",
+                    )
+                )
+
+                db.commit()
+                return ProjectUploadResponse(project_id=project.id, status=project.status)
+            except Exception:
+                db.rollback()
+                return ProjectUploadResponse(project_id=None, status=None)
 
     @staticmethod
     def get_contribution_candidates(project_id: int):
@@ -22,3 +94,107 @@ class StudentService:
     def update_contributions(project_id: int):
         with SessionLocal() as db:
             return {"message": f"contributions for project {project_id} updated from service"}
+
+    @staticmethod
+    def _resolve_track_id(db, track_id: str | int | None) -> int | None:
+        if track_id is None:
+            return None
+
+        if isinstance(track_id, str):
+            normalized = track_id.strip()
+            if not normalized or normalized.lower() == "none":
+                return None
+            if not normalized.isdigit():
+                return None
+            track_id = int(normalized)
+
+        track = db.query(CourseTrack.id).filter(CourseTrack.id == track_id).first()
+        return track.id if track else None
+
+    @staticmethod
+    def _save_project_files(project_dir: Path, project_pdfs: Iterable[UploadFile]) -> list[str]:
+        saved_paths: list[str] = []
+
+        for upload in project_pdfs:
+            original_name = upload.filename or "project.pdf"
+            extension = Path(original_name).suffix.lower() or ".pdf"
+            if extension != ".pdf":
+                raise ValueError("Only PDF files are supported.")
+
+            saved_name = f"{uuid.uuid4()}{extension}"
+            target_path = project_dir / saved_name
+
+            with target_path.open("wb") as buffer:
+                shutil.copyfileobj(upload.file, buffer)
+
+            saved_paths.append(str(target_path.resolve()))
+
+        return saved_paths
+
+    @staticmethod
+    def _extract_project_text(file_paths: Iterable[str]) -> tuple[str, str]:
+        extracted_chunks: list[str] = []
+        ocr_chunks: list[str] = []
+
+        for file_path in file_paths:
+            extracted = InstructorService._extract_text_from_pdf(file_path).strip()
+            if extracted:
+                extracted_chunks.append(extracted)
+                continue
+
+            ocr_text = InstructorService._perform_ocr(file_path).strip()
+            if ocr_text:
+                ocr_chunks.append(ocr_text)
+
+        return "\n\n".join(extracted_chunks), "\n\n".join(ocr_chunks)
+
+    @staticmethod
+    def _parse_contribution_text(source_text: str) -> dict[str, str | None]:
+        cleaned = re.sub(r"\r\n?", "\n", source_text or "").strip()
+        if not cleaned:
+            return {
+                "student_role": None,
+                "student_action": None,
+                "student_result": None,
+            }
+
+        role = StudentService._extract_section(
+            cleaned,
+            ("\uc5ed\ud560", "\ub2f4\ub2f9 \uc5ed\ud560", "role"),
+            fallback_first_line=True,
+        )
+        action = StudentService._extract_section(
+            cleaned,
+            ("\uae30\uc5ec", "\ub2f4\ub2f9 \uc5c5\ubb34", "\uc8fc\uc694 \uc791\uc5c5", "action", "responsibility"),
+        )
+        result = StudentService._extract_section(
+            cleaned,
+            ("\uc131\uacfc", "\uacb0\uacfc", "result", "achievement"),
+        )
+
+        if not action:
+            action = cleaned
+
+        return {
+            "student_role": role,
+            "student_action": action,
+            "student_result": result,
+        }
+
+    @staticmethod
+    def _extract_section(
+        text: str,
+        labels: tuple[str, ...],
+        fallback_first_line: bool = False,
+    ) -> str | None:
+        for label in labels:
+            pattern = rf"(?im)^\s*{re.escape(label)}\s*[:\\-]?\s*(.+)$"
+            match = re.search(pattern, text)
+            if match:
+                return match.group(1).strip() or None
+
+        if fallback_first_line:
+            first_line = text.splitlines()[0].strip()
+            return first_line[:255] if first_line else None
+
+        return None
