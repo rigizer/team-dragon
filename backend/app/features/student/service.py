@@ -5,12 +5,19 @@ import uuid
 from pathlib import Path
 from typing import Iterable
 
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 
 from app.db.database import SessionLocal
-from app.db.models import ContributionFrom, CourseTrack, StudentProject, User
+from app.db.models import ContributionFrom, CourseTrack, EvaluationCriterion, StudentProject, User
 from app.features.instructor.service import InstructorService
-from app.features.student.schemas import ProjectUploadResponse
+from app.features.student.schemas import (
+    ContributionActionItem,
+    ContributionCandidateResponse,
+    ContributionResultItem,
+    ContributionSkillItem,
+    ContributionSuggestionItem,
+    ProjectUploadResponse,
+)
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 PROJECT_UPLOAD_DIR = BASE_DIR / "uploads" / "projects"
@@ -88,7 +95,70 @@ class StudentService:
     @staticmethod
     def get_contribution_candidates(project_id: int):
         with SessionLocal() as db:
-            return {"message": f"contribution candidates for project {project_id} from service"}
+            project = db.query(StudentProject).filter(StudentProject.id == project_id).first()
+            if not project:
+                raise HTTPException(status_code=404, detail="Project not found")
+
+            contributions = (
+                db.query(ContributionFrom)
+                .filter(ContributionFrom.student_project_id == project_id)
+                .order_by(ContributionFrom.created_at.asc(), ContributionFrom.id.asc())
+                .limit(5)
+                .all()
+            )
+
+            criteria = (
+                db.query(EvaluationCriterion)
+                .filter(
+                    EvaluationCriterion.track_id == project.track_id,
+                    EvaluationCriterion.status == "approved",
+                )
+                .order_by(EvaluationCriterion.priority.asc(), EvaluationCriterion.id.asc())
+                .all()
+            )
+            if not criteria:
+                criteria = (
+                    db.query(EvaluationCriterion)
+                    .filter(EvaluationCriterion.track_id == project.track_id)
+                    .order_by(EvaluationCriterion.priority.asc(), EvaluationCriterion.id.asc())
+                    .all()
+                )
+
+            suggestions: list[ContributionSuggestionItem] = []
+            for index, contribution in enumerate(contributions):
+                mapped_criterion = criteria[index] if index < len(criteria) else None
+                actions = StudentService._split_items(contribution.student_action)
+                results = StudentService._split_items(contribution.student_result)
+                skills = StudentService._extract_skills(
+                    contribution.student_role,
+                    contribution.student_action,
+                    contribution.student_result,
+                )
+
+                suggestions.append(
+                    ContributionSuggestionItem(
+                        role=contribution.student_role or "역할 미추출",
+                        actions=[
+                            ContributionActionItem(action=item)
+                            for item in actions
+                        ],
+                        results=[
+                            ContributionResultItem(result=item)
+                            for item in results
+                        ],
+                        skills=[
+                            ContributionSkillItem(skill=item)
+                            for item in skills
+                        ],
+                        source=(
+                            mapped_criterion.source_refs
+                            if mapped_criterion and mapped_criterion.source_refs
+                            else "source unavailable"
+                        ),
+                    )
+                )
+
+            return ContributionCandidateResponse(suggestions=suggestions)
 
     @staticmethod
     def update_contributions(project_id: int):
@@ -198,3 +268,47 @@ class StudentService:
             return first_line[:255] if first_line else None
 
         return None
+
+    @staticmethod
+    def _split_items(text: str | None) -> list[str]:
+        if not text:
+            return []
+
+        normalized = re.sub(r"\r\n?", "\n", text)
+        parts = re.split(r"\n+|[•·▪■]|;\s*|,\s*(?=[A-Z가-힣0-9])", normalized)
+
+        items: list[str] = []
+        seen: set[str] = set()
+        for part in parts:
+            cleaned = re.sub(r"^\s*[-*]\s*", "", part).strip(" \t\n\r-")
+            if not cleaned or cleaned in seen:
+                continue
+            seen.add(cleaned)
+            items.append(cleaned)
+
+        return items[:5]
+
+    @staticmethod
+    def _extract_skills(*texts: str | None) -> list[str]:
+        combined = " ".join(text for text in texts if text)
+        if not combined.strip():
+            return []
+
+        pattern = (
+            r"\b(?:FastAPI|Django|Flask|Spring Boot|Spring|Java|Python|JavaScript|TypeScript|"
+            r"React|Next\.js|Vue|Node\.js|Express|PostgreSQL|MySQL|Redis|MongoDB|SQLAlchemy|"
+            r"Docker|Kubernetes|GitHub Actions|AWS|EC2|S3|JWT|REST(?:ful)? API|gRPC|GraphQL)\b"
+        )
+        matches = re.findall(pattern, combined, flags=re.IGNORECASE)
+
+        skills: list[str] = []
+        seen: set[str] = set()
+        for match in matches:
+            normalized = match.strip()
+            lowered = normalized.lower()
+            if lowered in seen:
+                continue
+            seen.add(lowered)
+            skills.append(normalized)
+
+        return skills[:5]
