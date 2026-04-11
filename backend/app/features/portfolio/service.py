@@ -1,7 +1,10 @@
 from app.db.database import SessionLocal
 from app.db.models import StudentProject, EmploymentPack
-from app.features.portfolio.schemas import PortfolioReviewResponse, ApprovePortfolioResponse, DownloadEmploymentPackResponse
+from app.features.portfolio.schemas import PortfolioReviewResponse, ApprovePortfolioResponse, DownloadEmploymentPackResponse, PortfolioResponse
 from fastapi import HTTPException
+from typing import List
+
+__all__ = ["PortfolioService"]
 
 class PortfolioService:
     """포트폴리오 관련 비즈니스 로직 및 DB 세션 관리"""

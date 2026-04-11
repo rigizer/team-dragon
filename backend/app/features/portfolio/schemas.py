@@ -35,4 +35,4 @@ class PortfolioResponse(BaseModel):
     portfolio_url: Optional[str]
 
     class Config:
-        orm_mode = True
+        from_attributes = True

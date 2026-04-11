@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.features.portfolio.schemas import PortfolioReviewResponse, ApprovePortfolioRequest, ApprovePortfolioResponse, DownloadEmploymentPackResponse, PortfolioResponse
-from app.features.portfolio.service import PortfolioService, get_portfolios_by_track
+from app.features.portfolio.service import PortfolioService
+from typing import List
 
 router = APIRouter(prefix="/api", tags=["portfolio"])
 
