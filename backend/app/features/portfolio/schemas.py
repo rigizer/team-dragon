@@ -27,3 +27,12 @@ class DownloadEmploymentPackResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class PortfolioResponse(BaseModel):
+    student_id: int
+    student_name: str
+    portfolio_url: Optional[str]
+
+    class Config:
+        orm_mode = True

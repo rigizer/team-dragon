@@ -128,3 +128,33 @@ class PortfolioService:
             
             # 승인되지 않은 경우 "denied" 반환
             return DownloadEmploymentPackResponse(file_url="denied")
+
+    @staticmethod
+    def get_portfolios_by_track(track_id: int):
+        """
+        트랙에 등록된 학생들의 포트폴리오를 조회합니다.
+
+        Args:
+            track_id: 트랙 ID
+
+        Returns:
+            List[PortfolioResponse]: 학생 ID, 이름, 포트폴리오 URL 목록
+        """
+        with SessionLocal() as db:
+            student_projects = db.query(StudentProject).join(EmploymentPack).filter(
+                StudentProject.track_id == track_id
+            ).all()
+
+            portfolios = []
+            for project in student_projects:
+                portfolio_url = None
+                if project.employment_pack and project.employment_pack.status == "certified":
+                    portfolio_url = project.employment_pack.portfolio_file_url
+
+                portfolios.append({
+                    "student_id": project.student_id,
+                    "student_name": project.student.name,
+                    "portfolio_url": portfolio_url
+                })
+
+            return portfolios

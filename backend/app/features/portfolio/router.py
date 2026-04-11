@@ -1,6 +1,8 @@
-from fastapi import APIRouter
-from app.features.portfolio.service import PortfolioService
-from app.features.portfolio.schemas import PortfolioReviewResponse, ApprovePortfolioRequest, ApprovePortfolioResponse, DownloadEmploymentPackResponse
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from app.db.database import get_db
+from app.features.portfolio.schemas import PortfolioReviewResponse, ApprovePortfolioRequest, ApprovePortfolioResponse, DownloadEmploymentPackResponse, PortfolioResponse
+from app.features.portfolio.service import PortfolioService, get_portfolios_by_track
 
 router = APIRouter(prefix="/api", tags=["portfolio"])
 
@@ -47,3 +49,16 @@ async def download_employment_pack(project_id: int) -> DownloadEmploymentPackRes
             - 없음: file_url = None
     """
     return PortfolioService.download_employment_pack(project_id)
+
+@router.get("/tracks/{track_id}/portfolio", response_model=List[PortfolioResponse])
+async def get_portfolios_by_track(track_id: int):
+    """
+    트랙에 등록된 학생들의 포트폴리오를 조회합니다.
+
+    Args:
+        track_id: 트랙 ID
+
+    Returns:
+        List[PortfolioResponse]: 학생 ID, 이름, 포트폴리오 URL 목록
+    """
+    return PortfolioService.get_portfolios_by_track(track_id)
