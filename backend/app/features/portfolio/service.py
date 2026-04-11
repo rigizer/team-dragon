@@ -1,6 +1,6 @@
 from app.db.database import SessionLocal
 from app.db.models import StudentProject, EmploymentPack
-from app.features.portfolio.schemas import PortfolioReviewResponse, ApprovePortfolioResponse
+from app.features.portfolio.schemas import PortfolioReviewResponse, ApprovePortfolioResponse, DownloadEmploymentPackResponse
 from fastapi import HTTPException
 
 class PortfolioService:
@@ -96,6 +96,35 @@ class PortfolioService:
             return ApprovePortfolioResponse(status=employment_pack.status)
 
     @staticmethod
-    def download_employment_pack(project_id: int):
+    def download_employment_pack(project_id: int) -> DownloadEmploymentPackResponse:
+        """
+        학생이 시스템이 제작한 포트폴리오를 다운로드합니다.
+        강사의 승인이 필요합니다.
+        
+        Args:
+            project_id: 학생 프로젝트 ID
+            
+        Returns:
+            DownloadEmploymentPackResponse: 
+                - 승인됨: file_url (포트폴리오 URL)
+                - 미승인: file_url = "denied"
+                - 없음: file_url = None
+        """
         with SessionLocal() as db:
-            return {"message": f"employment pack for project {project_id} from service"}
+            # EmploymentPack 조회
+            employment_pack = db.query(EmploymentPack).filter(
+                EmploymentPack.student_project_id == project_id
+            ).first()
+            
+            # 포트폴리오가 없으면 None 반환
+            if not employment_pack:
+                return DownloadEmploymentPackResponse(file_url=None)
+            
+            # 강사가 승인한 경우 (status = "certified")
+            if employment_pack.status == "certified":
+                return DownloadEmploymentPackResponse(
+                    file_url=employment_pack.portfolio_file_url
+                )
+            
+            # 승인되지 않은 경우 "denied" 반환
+            return DownloadEmploymentPackResponse(file_url="denied")

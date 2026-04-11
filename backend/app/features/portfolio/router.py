@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from app.features.portfolio.service import PortfolioService
-from app.features.portfolio.schemas import PortfolioReviewResponse, ApprovePortfolioRequest, ApprovePortfolioResponse
+from app.features.portfolio.schemas import PortfolioReviewResponse, ApprovePortfolioRequest, ApprovePortfolioResponse, DownloadEmploymentPackResponse
 
 router = APIRouter(prefix="/api", tags=["portfolio"])
 
@@ -31,6 +31,19 @@ async def approve_portfolio(project_id: int, request: ApprovePortfolioRequest) -
     """
     return PortfolioService.approve_portfolio(project_id, request.is_approved)
 
-@router.get("/projects/{project_id}/employment-pack")
-async def download_employment_pack(project_id: int):
+@router.get("/projects/{project_id}/employment-pack", response_model=DownloadEmploymentPackResponse)
+async def download_employment_pack(project_id: int) -> DownloadEmploymentPackResponse:
+    """
+    학생이 시스템이 제작한 포트폴리오를 다운로드합니다.
+    강사의 승인이 필요합니다.
+    
+    Args:
+        project_id: 학생 프로젝트 ID
+        
+    Returns:
+        DownloadEmploymentPackResponse:
+            - 승인됨: file_url (포트폴리오 URL)
+            - 미승인: file_url = "denied"
+            - 없음: file_url = None
+    """
     return PortfolioService.download_employment_pack(project_id)

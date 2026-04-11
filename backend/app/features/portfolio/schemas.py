@@ -20,3 +20,10 @@ class ApprovePortfolioResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class DownloadEmploymentPackResponse(BaseModel):
+    file_url: Optional[str]
+
+    class Config:
+        from_attributes = True
