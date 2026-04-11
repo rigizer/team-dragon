@@ -2,6 +2,7 @@
 Team Dragon Backend Application
 """
 from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.status import HTTP_413_REQUEST_ENTITY_TOO_LARGE
 from app.config import config
 from app.features.health.router import router as health_router
@@ -25,6 +26,16 @@ class DragonApp:
 
     def _setup_middlewares(self):
         """미들웨어 설정"""
+        
+        # CORS 미들웨어 설정
+        cors_origins = ["*"] if config.CORS_ALLOW_ALL else config.CORS_ORIGINS
+        self.app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
         
         # 업로드 용량 제한 미들웨어 (100MB)
         @self.app.middleware("http")
