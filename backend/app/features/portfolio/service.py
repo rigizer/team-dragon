@@ -1,6 +1,6 @@
 from app.db.database import SessionLocal
 from app.db.models import StudentProject, EmploymentPack
-from app.features.portfolio.schemas import PortfolioReviewResponse
+from app.features.portfolio.schemas import PortfolioReviewResponse, ApprovePortfolioResponse
 from fastapi import HTTPException
 
 class PortfolioService:
@@ -48,9 +48,52 @@ class PortfolioService:
             )
 
     @staticmethod
-    def approve_portfolio(project_id: int):
+    def approve_portfolio(project_id: int, is_approved: bool) -> ApprovePortfolioResponse:
+        """
+        강사가 포트폴리오를 승인 또는 거절합니다.
+        
+        Args:
+            project_id: 학생 프로젝트 ID
+            is_approved: 승인 여부 (True: 승인, False: 거절)
+            
+        Returns:
+            ApprovePortfolioResponse: 상태 (certified 또는 None)
+            
+        Raises:
+            HTTPException: 프로젝트나 포트폴리오를 찾을 수 없는 경우
+        """
         with SessionLocal() as db:
-            return {"message": f"portfolio approved for project {project_id} from service"}
+            # StudentProject 조회
+            student_project = db.query(StudentProject).filter(
+                StudentProject.id == project_id
+            ).first()
+            
+            if not student_project:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"프로젝트 {project_id}를 찾을 수 없습니다."
+                )
+            
+            # EmploymentPack 조회
+            employment_pack = db.query(EmploymentPack).filter(
+                EmploymentPack.student_project_id == project_id
+            ).first()
+            
+            if not employment_pack:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"프로젝트 {project_id}에 대한 포트폴리오를 찾을 수 없습니다."
+                )
+            
+            # 승인 여부에 따라 status 업데이트
+            if is_approved:
+                employment_pack.status = "certified"
+            else:
+                employment_pack.status = None
+            
+            db.commit()
+            
+            return ApprovePortfolioResponse(status=employment_pack.status)
 
     @staticmethod
     def download_employment_pack(project_id: int):
