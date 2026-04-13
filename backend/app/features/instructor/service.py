@@ -18,6 +18,7 @@ from app.db.models import (
     CourseMaterial,
     EvaluationCriterion,
     InstructorEvaluation,
+    EmploymentPack,
     StudentProject,
 )
 from app.features.instructor.schemas import (
@@ -202,7 +203,30 @@ class InstructorService:
     @staticmethod
     def get_track_portfolios(track_id: int):
         with SessionLocal() as db:
-            return {"message": f"portfolios for track {track_id} from service"}
+            projects = (
+                db.query(StudentProject)
+                .filter(StudentProject.track_id == track_id)
+                .all()
+            )
+            result = []
+            for project in projects:
+                portfolio_url = None
+                if (
+                    project.employment_pack
+                    and project.employment_pack.status == "certified"
+                ):
+                    portfolio_url = project.employment_pack.portfolio_file_url
+                result.append(
+                    {
+                        "project_id": project.id,
+                        "student_id": project.student_id,
+                        "student_name": project.student.name
+                        if project.student
+                        else None,
+                        "portfolio_url": portfolio_url,
+                    }
+                )
+            return result
 
     @staticmethod
     def add_student_to_track(

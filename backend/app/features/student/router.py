@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, File, Form, UploadFile
 
@@ -26,7 +26,7 @@ async def upload_project(
     track_id: Optional[str] = Form(None),
     project_link: Optional[str] = Form(None),
     extra_links: Optional[str] = Form(None),
-    project_pdf: UploadFile = File(...),
+    project_pdf: List[UploadFile] = File(...),
 ):
     return await StudentService.upload_project(
         student_id,
@@ -34,7 +34,7 @@ async def upload_project(
         track_id,
         project_link,
         extra_links,
-        project_pdf,
+        project_pdf[0],
     )
 
 

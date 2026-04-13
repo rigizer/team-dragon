@@ -103,6 +103,21 @@ class ContributionFrom(Base, TimestampMixin):
     status = Column(String(50), default="draft")
 
     project = relationship("StudentProject", back_populates="contributions")
+    skills = relationship("ContributionSkill", back_populates="contribution", cascade="all, delete-orphan")
+
+
+class ContributionSkill(Base, TimestampMixin):
+    __tablename__ = "contribution_skill"
+
+    id = Column(Integer, primary_key=True)
+    contribution_id = Column(Integer, ForeignKey("contribution_from.id", ondelete="CASCADE"), nullable=False)
+    skill_name = Column(String(100), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("contribution_id", "skill_name"),
+    )
+
+    contribution = relationship("ContributionFrom", back_populates="skills")
 
 class InstructorEvaluation(Base, TimestampMixin):
     __tablename__ = "instructor_evaluation"

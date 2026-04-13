@@ -27,7 +27,6 @@ services:
       timeout: 5s
       retries: 3
 
-
   # Database 서비스
   dragon-db:
     image: postgres:15-alpine
