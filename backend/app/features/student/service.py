@@ -170,7 +170,6 @@ class StudentService:
             project.ocr_text = ocr_text or None
             if extracted_text.strip() or ocr_text.strip():
                 project.status = "extracted"
-
             try:
                 db.commit()
                 db.refresh(project)
