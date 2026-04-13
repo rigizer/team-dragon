@@ -1,8 +1,8 @@
-# Dragon Manager 🐉
+# ProjectHub 🐉
 IT 교육생을 위한 지능형 취업 매칭 플랫폼
 
 ## 📌 프로젝트 개요
-**Dragon Manager**는 IT학원에 다니는 교육생들의 성공적인 취업을 돕기 위해 개발된 플랫폼입니다. 
+**ProjectHub**는 IT학원에 다니는 교육생들의 성공적인 취업을 돕기 위해 개발된 플랫폼입니다. 
 교육생의 포트폴리오를 자동으로 생성하고, 취업 시장 데이터를 분석하여 개인에게 최적화된 기업을 추천합니다.
 
 ## 🎯 주요 기능
@@ -71,35 +71,26 @@ python main.py
 ```
 ✅ **Backend**: http://localhost:8000
 
-#### Frontend (React/TypeScript) 실행
+#### Frontend (React/Vite) 실행
 ```bash
 # Frontend 디렉토리로 이동 (새 터미널)
 cd frontend
 
 # 의존성 설치 (최초 1회)
-npm install
+pnpm install
 
 # 개발 서버 실행
-npm run dev
+pnpm dev
 ```
-✅ **Frontend**: http://localhost:3000  
-✅ **API 연결**: http://localhost:8000 (자동 참조)
+✅ **Frontend**: http://localhost:5173  
+✅ **API 연결**: `/api/...` 요청은 기본적으로 Vite proxy를 통해 `http://localhost:8000`으로 전달
 
 ### 2️⃣ Docker Compose 실행
 
-#### 전체 스택 실행
+#### Backend + DB 실행
 ```bash
 # 프로젝트 루트 디렉토리에서
-docker-compose up -d
-```
-
-#### 개별 서비스 실행
-```bash
-# Backend만 실행
-docker-compose up dragon-be -d
-
-# Frontend만 실행
-docker-compose up dragon-fe -d
+docker-compose up -d dragon-db dragon-be
 ```
 
 #### 서비스 확인
@@ -115,23 +106,25 @@ docker-compose down
 ```
 
 ✅ **Backend**: http://localhost:8000  
-✅ **Frontend**: http://localhost:3000  
-✅ **API 연결**: http://dragon-be:8000 (컨테이너 내부 네트워크)
+✅ **DB**: http://localhost:5432  
+✅ **Frontend**: 로컬 Vite dev server (`pnpm dev`) 사용
 
 ### 🔧 환경 설정
 
 #### 로컬 개발
-- Backend: `.env` 파일에서 `API_HOST=http://localhost:8000`
-- Frontend: `.env` 파일에서 `VITE_API_URL=http://localhost:8000`
+- Backend: 루트 `.env` 파일에서 `API_HOST=http://localhost:8000`
+- Frontend: `frontend/.env` 파일에서 아래 값을 선택적으로 설정
+  - `VITE_API_BASE_URL=` → 비워두면 상대 경로 `/api/...` 사용
+  - `VITE_API_PROXY_TARGET=http://localhost:8000` → Vite dev proxy 대상
 
 #### Docker 환경
-- 자동으로 컨테이너 네트워크를 통해 서비스 간 통신
-- 환경변수가 `docker-compose.yml`에서 자동 설정됨
+- `dragon-be`, `dragon-db`만 Docker Compose로 실행
+- 프론트엔드는 로컬 Vite dev server에서 `/api` 프록시를 통해 백엔드와 통신
 
 ### 📊 헬스 체크
 ```bash
 # Backend 헬스 체크
-curl http://localhost:8000/health
+curl http://localhost:8000/healthcheck
 
 # 응답 예시
 {
@@ -145,4 +138,4 @@ curl http://localhost:8000/health
 
 ---
 
-**Dragon Manager** - 교육생의 꿈을 현실로 만드는 취업 매칭 플랫폼
+**ProjectHub** - 교육생의 꿈을 현실로 만드는 취업 매칭 플랫폼
