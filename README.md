@@ -1,5 +1,5 @@
 # ProjectHub 🐉
-IT 교육생을 위한 지능형 취업 매칭 플랫폼
+IT 교육생을 위한 지능형 취업 매칭 플랫폼(https://ailms.duckdns.org/)
 
 ## 📌 프로젝트 개요
 **ProjectHub**는 IT학원에 다니는 교육생들의 성공적인 취업을 돕기 위해 개발된 플랫폼입니다. 
