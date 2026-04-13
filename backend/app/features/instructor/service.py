@@ -26,6 +26,12 @@ from app.features.instructor.schemas import (
     TrackListResponse,
     TrackItem,
     TrackCreateResponse,
+    TrackStudentAddRequest,
+    TrackStudentAddResponse,
+    TrackStudentRemoveResponse,
+    TrackCriterionAddRequest,
+    TrackCriterionAddResponse,
+    TrackCriterionRemoveResponse,
     CandidateListResponse,
     CandidateItem,
     ApproveCriteriaRequest,
@@ -65,7 +71,7 @@ class InstructorService:
 
             # 2. 강사와 연결된 학생 정보 조회
             results = (
-                db.query(User.name, User.login_id)
+                db.query(User.id, User.name, User.login_id)
                 .join(
                     InstructorStudentRelation,
                     User.id == InstructorStudentRelation.student_id,
@@ -84,8 +90,8 @@ class InstructorService:
 
             # 3. 데이터 가공 (이름, 아이디 분리)
             student_list = [
-                StudentItem(student_name=name, student_id=login_id)
-                for name, login_id in results
+                StudentItem(student_name=name, student_id=student_id, login_id=login_id)
+                for student_id, name, login_id in results
             ]
 
             return StudentListResponse(students=student_list)
@@ -197,6 +203,241 @@ class InstructorService:
     def get_track_portfolios(track_id: int):
         with SessionLocal() as db:
             return {"message": f"portfolios for track {track_id} from service"}
+
+    @staticmethod
+    def add_student_to_track(
+        track_id: int,
+        request: TrackStudentAddRequest,
+    ) -> TrackStudentAddResponse:
+        with SessionLocal() as db:
+            track = db.query(CourseTrack).filter(CourseTrack.id == track_id).first()
+            if not track:
+                raise HTTPException(
+                    status_code=404,
+                    detail="요청한 트랙을 찾을 수 없습니다.",
+                )
+
+            student = None
+            normalized_login_id = (
+                request.student_login_id.strip() if request.student_login_id else None
+            )
+
+            if request.student_id is not None:
+                student = (
+                    db.query(User)
+                    .filter(User.id == request.student_id, User.role == "STUDENT")
+                    .first()
+                )
+
+            if normalized_login_id:
+                login_student = (
+                    db.query(User)
+                    .filter(
+                        User.login_id == normalized_login_id, User.role == "STUDENT"
+                    )
+                    .first()
+                )
+                if student and login_student and student.id != login_student.id:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="학생 식별자가 서로 일치하지 않습니다.",
+                    )
+                if login_student:
+                    student = login_student
+
+            if not student:
+                raise HTTPException(
+                    status_code=404,
+                    detail="추가할 학생을 찾을 수 없습니다.",
+                )
+
+            linked_student = (
+                db.query(InstructorStudentRelation)
+                .filter(
+                    InstructorStudentRelation.instructor_id == track.instructor_id,
+                    InstructorStudentRelation.student_id == student.id,
+                )
+                .first()
+            )
+            if not linked_student:
+                raise HTTPException(
+                    status_code=400,
+                    detail="현재 강사에게 연결된 학생만 추가할 수 있습니다.",
+                )
+
+            existing_project = (
+                db.query(StudentProject)
+                .filter(
+                    StudentProject.track_id == track_id,
+                    StudentProject.student_id == student.id,
+                )
+                .first()
+            )
+
+            if not existing_project:
+                db.add(
+                    StudentProject(
+                        student_id=student.id,
+                        track_id=track_id,
+                        title=f"{track.name} 기본 프로젝트",
+                        project_pdf_url="pending://not-submitted",
+                        status="pending",
+                    )
+                )
+                db.commit()
+
+            return TrackStudentAddResponse(
+                track_id=track_id,
+                student_id=student.id,
+                student_login_id=student.login_id,
+                student_name=student.name,
+                status="added" if not existing_project else "existing",
+                message=(
+                    "학생을 트랙에 추가했습니다."
+                    if not existing_project
+                    else "이미 트랙에 추가된 학생입니다."
+                ),
+            )
+
+    @staticmethod
+    def remove_student_from_track(
+        track_id: int,
+        student_id: int,
+    ) -> TrackStudentRemoveResponse:
+        with SessionLocal() as db:
+            track = db.query(CourseTrack).filter(CourseTrack.id == track_id).first()
+            if not track:
+                raise HTTPException(
+                    status_code=404,
+                    detail="요청한 트랙을 찾을 수 없습니다.",
+                )
+
+            project_rows = (
+                db.query(StudentProject)
+                .filter(
+                    StudentProject.track_id == track_id,
+                    StudentProject.student_id == student_id,
+                )
+                .all()
+            )
+
+            if not project_rows:
+                raise HTTPException(
+                    status_code=404,
+                    detail="현재 트랙에 속한 학생을 찾을 수 없습니다.",
+                )
+
+            criterion_ids = [
+                criterion_id
+                for (criterion_id,) in (
+                    db.query(EvaluationCriterion.id)
+                    .filter(EvaluationCriterion.track_id == track_id)
+                    .all()
+                )
+            ]
+
+            removed_score_count = 0
+            if criterion_ids:
+                removed_score_count = (
+                    db.query(InstructorEvaluation)
+                    .filter(
+                        InstructorEvaluation.student_id == student_id,
+                        InstructorEvaluation.criterion_id.in_(criterion_ids),
+                    )
+                    .delete(synchronize_session=False)
+                )
+
+            for project in project_rows:
+                db.delete(project)
+
+            db.commit()
+
+            return TrackStudentRemoveResponse(
+                track_id=track_id,
+                student_id=student_id,
+                removed_score_count=removed_score_count,
+                status="removed",
+                message="학생을 트랙에서 삭제했습니다.",
+            )
+
+    @staticmethod
+    def add_criterion_to_track(
+        track_id: int,
+        request: TrackCriterionAddRequest,
+    ) -> TrackCriterionAddResponse:
+        with SessionLocal() as db:
+            track = db.query(CourseTrack).filter(CourseTrack.id == track_id).first()
+            if not track:
+                raise HTTPException(
+                    status_code=404,
+                    detail="요청한 트랙을 찾을 수 없습니다.",
+                )
+
+            normalized_title = request.title.strip()
+            if not normalized_title:
+                raise HTTPException(
+                    status_code=400,
+                    detail="평가 요소 제목을 입력해주세요.",
+                )
+
+            criterion = EvaluationCriterion(
+                track_id=track_id,
+                title=normalized_title,
+                description=request.description.strip()
+                if request.description
+                else None,
+                priority=request.priority,
+                score_scale=request.score_scale or 5,
+                status="approved",
+            )
+            db.add(criterion)
+            db.commit()
+            db.refresh(criterion)
+
+            return TrackCriterionAddResponse(
+                criterion_id=criterion.id,
+                title=criterion.title,
+                status=criterion.status,
+                score_scale=criterion.score_scale or 5,
+                message="평가 요소를 추가했습니다.",
+            )
+
+    @staticmethod
+    def remove_criterion_from_track(
+        track_id: int,
+        criterion_id: int,
+    ) -> TrackCriterionRemoveResponse:
+        with SessionLocal() as db:
+            criterion = (
+                db.query(EvaluationCriterion)
+                .filter(
+                    EvaluationCriterion.id == criterion_id,
+                    EvaluationCriterion.track_id == track_id,
+                )
+                .first()
+            )
+            if not criterion:
+                raise HTTPException(
+                    status_code=404,
+                    detail="현재 트랙의 평가지표를 찾을 수 없습니다.",
+                )
+
+            removed_score_count = (
+                db.query(InstructorEvaluation)
+                .filter(InstructorEvaluation.criterion_id == criterion_id)
+                .delete(synchronize_session=False)
+            )
+
+            db.delete(criterion)
+            db.commit()
+
+            return TrackCriterionRemoveResponse(
+                criterion_id=criterion_id,
+                track_id=track_id,
+                removed_score_count=removed_score_count,
+                status="removed",
+                message="평가 요소를 삭제했습니다.",
+            )
 
     @staticmethod
     def get_criteria_candidates(track_id: int) -> CandidateListResponse:

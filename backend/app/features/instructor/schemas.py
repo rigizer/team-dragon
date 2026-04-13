@@ -4,7 +4,8 @@ from typing import List, Optional
 
 class StudentItem(BaseModel):
     student_name: Optional[str] = None
-    student_id: Optional[str] = None
+    student_id: Optional[int | str] = None
+    login_id: Optional[str] = None
 
 
 class StudentListResponse(BaseModel):
@@ -23,6 +24,51 @@ class TrackListResponse(BaseModel):
 class TrackCreateResponse(BaseModel):
     track_id: int
     status: str
+
+
+class TrackStudentAddRequest(BaseModel):
+    student_login_id: Optional[str] = None
+    student_id: Optional[int] = None
+
+
+class TrackStudentAddResponse(BaseModel):
+    track_id: int
+    student_id: int
+    student_login_id: str
+    student_name: str
+    status: str
+    message: str
+
+
+class TrackStudentRemoveResponse(BaseModel):
+    track_id: int
+    student_id: int
+    removed_score_count: int
+    status: str
+    message: str
+
+
+class TrackCriterionAddRequest(BaseModel):
+    title: str
+    description: Optional[str] = None
+    priority: Optional[int] = None
+    score_scale: Optional[int] = 5
+
+
+class TrackCriterionAddResponse(BaseModel):
+    criterion_id: int
+    title: str
+    status: str
+    score_scale: int
+    message: str
+
+
+class TrackCriterionRemoveResponse(BaseModel):
+    criterion_id: int
+    track_id: int
+    removed_score_count: int
+    status: str
+    message: str
 
 
 class CandidateItem(BaseModel):

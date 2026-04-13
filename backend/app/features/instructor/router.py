@@ -3,6 +3,12 @@ from app.features.instructor.schemas import (
     StudentListResponse,
     TrackListResponse,
     TrackCreateResponse,
+    TrackStudentAddRequest,
+    TrackStudentAddResponse,
+    TrackStudentRemoveResponse,
+    TrackCriterionAddRequest,
+    TrackCriterionAddResponse,
+    TrackCriterionRemoveResponse,
     CandidateListResponse,
     ApproveCriteriaRequest,
     ApproveCriteriaResponse,
@@ -58,6 +64,32 @@ async def create_track(
 @router.get("/tracks/{track_id}/portfolio")
 async def get_track_portfolios(track_id: int):
     return InstructorService.get_track_portfolios(track_id)
+
+
+@router.post("/tracks/{track_id}/students", response_model=TrackStudentAddResponse)
+async def add_student_to_track(track_id: int, request: TrackStudentAddRequest):
+    return InstructorService.add_student_to_track(track_id, request)
+
+
+@router.delete(
+    "/tracks/{track_id}/students/{student_id}",
+    response_model=TrackStudentRemoveResponse,
+)
+async def remove_student_from_track(track_id: int, student_id: int):
+    return InstructorService.remove_student_from_track(track_id, student_id)
+
+
+@router.post("/tracks/{track_id}/criteria", response_model=TrackCriterionAddResponse)
+async def add_criterion_to_track(track_id: int, request: TrackCriterionAddRequest):
+    return InstructorService.add_criterion_to_track(track_id, request)
+
+
+@router.delete(
+    "/tracks/{track_id}/criteria/{criterion_id}",
+    response_model=TrackCriterionRemoveResponse,
+)
+async def remove_criterion_from_track(track_id: int, criterion_id: int):
+    return InstructorService.remove_criterion_from_track(track_id, criterion_id)
 
 
 @router.get(
